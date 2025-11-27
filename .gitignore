@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.csv
+venv/
+.env
+users.db
+risk_model.pkl

@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container pb-5" style="max-width: 1000px;">
+
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-up">
+    <div>
+      <h3 class="fw-bold text-dark mb-0">AI Risk Calculator</h3>
+      <p class="text-muted small mb-0">Real-time IFRS 9 Probability of Default & ECL Estimation</p>
+    </div>
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm bg-white">
+      <i class="bi bi-grid-fill me-2"></i>Dashboard
+    </a>
+  </div>
+
+  <!-- Calculator Card -->
+  <div class="card border-0 shadow-lg animate-fade-up delay-1 overflow-hidden">
+    <div class="row g-0">
+      
+      <!-- LEFT: INPUT PANEL -->
+      <div class="col-lg-5 bg-light p-5 border-end">
+        <h5 class="fw-bold text-primary mb-4"><i class="bi bi-sliders me-2"></i>Input Parameters</h5>
+        
+        <form id="mlForm">
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-uppercase text-muted">Outstanding Balance ($)</label>
+            <div class="input-group">
+              <span class="input-group-text bg-white border-end-0"><i class="bi bi-currency-dollar"></i></span>
+              <input type="number" id="mlOutstanding" class="form-control border-start-0" value="50000" placeholder="e.g. 50000">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-uppercase text-muted">Monthly Instalment ($)</label>
+            <div class="input-group">
+              <span class="input-group-text bg-white border-end-0"><i class="bi bi-calendar-check"></i></span>
+              <input type="number" id="mlInstalment" class="form-control border-start-0" value="1500" placeholder="e.g. 1500">
+            </div>
+          </div>
+
+          <div class="row g-2 mb-4">
+            <div class="col-6">
+              <label class="form-label small fw-bold text-uppercase text-muted">Int. Rate (Decimal)</label>
+              <input type="number" id="mlEir" class="form-control" value="0.08" step="0.001" placeholder="0.08">
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-bold text-uppercase text-muted">Term (Months)</label>
+              <input type="number" id="mlTerm" class="form-control" value="36" placeholder="36">
+            </div>
+          </div>
+
+          <div class="d-grid">
+            <button type="button" class="btn btn-primary py-3 fw-bold shadow-sm hover-lift" onclick="predictRisk()">
+              <i class="bi bi-lightning-charge-fill me-2"></i>Calculate Risk Score
+            </button>
+            <button type="button" class="btn btn-link text-muted btn-sm mt-2" onclick="resetForm()">Reset to Defaults</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- RIGHT: RESULTS PANEL -->
+      <div class="col-lg-7 p-5 d-flex flex-column justify-content-center bg-white position-relative">
+        
+        <!-- Placeholder State -->
+        <div id="mlResult" class="text-center py-5">
+          <div class="mb-3 text-muted opacity-25">
+            <i class="bi bi-cpu-fill" style="font-size: 4rem;"></i>
+          </div>
+          <h5 class="text-muted">Ready to Simulate</h5>
+          <p class="small text-muted opacity-75">Enter loan details and click Calculate to run the ML Engine.</p>
+        </div>
+        
+        <!-- Active Results State -->
+        <div id="mlOutput" style="display: none;">
+          <div class="text-center mb-5">
+            <small class="text-uppercase fw-bold text-muted letter-spacing-2">Projected Probability of Default</small>
+            <h1 class="display-3 fw-bold text-dark mb-0"><span id="outPD">0.00</span><small class="fs-4 text-muted">%</small></h1>
+            <div id="riskBadge" class="badge bg-success bg-opacity-10 text-success px-3 py-2 mt-2 rounded-pill">Low Risk Profile</div>
+          </div>
+
+          <div class="row g-4 mb-4">
+            <div class="col-6">
+              <div class="p-3 bg-light rounded border text-center h-100">
+                <small class="text-muted fw-bold d-block mb-1">Model Implied LGD</small>
+                <h4 class="fw-bold text-warning mb-0"><span id="outLGD">0.00</span>%</h4>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="p-3 bg-light rounded border text-center h-100">
+                <small class="text-muted fw-bold d-block mb-1">Projected ECL</small>
+                <h4 class="fw-bold text-danger mb-0">$<span id="outECL">0</span></h4>
+              </div>
+            </div>
+          </div>
+
+          <!-- Visual Bar -->
+          <label class="small text-muted fw-bold mb-2">Risk Confidence Meter</label>
+          <div class="progress" style="height: 12px; border-radius: 6px;">
+            <div id="mlBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+          </div>
+          <div class="d-flex justify-content-between mt-2 small text-muted">
+            <span>Safe (0%)</span>
+            <span>Critical (100%)</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function predictRisk() {
+  const data = {
+    outstanding: document.getElementById('mlOutstanding').value,
+    instalment: document.getElementById('mlInstalment').value,
+    eir: document.getElementById('mlEir').value,
+    term: document.getElementById('mlTerm').value
+  };
+
+  const btn = document.querySelector('button[onclick="predictRisk()"]');
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+  btn.disabled = true;
+
+  fetch('/predict_api', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(res => res.json())
+  .then(res => {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+
+    if(res.error) { alert("Error: " + res.error); return; }
+    
+    document.getElementById('mlResult').style.display = 'none';
+    const outDiv = document.getElementById('mlOutput');
+    outDiv.style.display = 'block';
+    outDiv.classList.add('animate-fade-up'); // Re-trigger animation
+    
+    // Animate Numbers (Simple Logic)
+    document.getElementById('outPD').innerText = res.pd;
+    document.getElementById('outLGD').innerText = res.lgd;
+    document.getElementById('outECL').innerText = res.ecl.toLocaleString();
+    
+    // Update UI Colors
+    const bar = document.getElementById('mlBar');
+    const badge = document.getElementById('riskBadge');
+    
+    bar.style.width = res.pd + "%";
+    
+    if(res.pd < 5) { 
+      bar.className = "progress-bar bg-success";
+      badge.className = "badge bg-success bg-opacity-10 text-success px-3 py-2 mt-2 rounded-pill";
+      badge.innerText = "Low Risk Profile";
+    } else if(res.pd < 20) { 
+      bar.className = "progress-bar bg-warning"; 
+      badge.className = "badge bg-warning bg-opacity-10 text-warning px-3 py-2 mt-2 rounded-pill";
+      badge.innerText = "Medium Risk / Watchlist";
+    } else { 
+      bar.className = "progress-bar bg-danger"; 
+      badge.className = "badge bg-danger bg-opacity-10 text-danger px-3 py-2 mt-2 rounded-pill";
+      badge.innerText = "High Risk / Critical";
+    }
+  })
+  .catch(err => {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+    alert("Connection Error");
+  });
+}
+
+function resetForm() {
+  document.getElementById('mlForm').reset();
+  document.getElementById('mlResult').style.display = 'block';
+  document.getElementById('mlOutput').style.display = 'none';
+}
+</script>
+{% endblock %}
+```
+
+### Step 2: Update `app.py`
+We need to register this new page. Add this route function before `if __name__ == "__main__":`.
+
+```python
+# app.py - Add this new route
+@app.route("/calculator")
+@login_required
+def calculator():
+    return render_template("calculator.html", user=current_user)
+```
+
+### Step 3: Add Link to `templates/base.html`
+Let's add the "Calculator" link to the top navigation bar so users can find it easily.
+
+Find the `<!-- Top Nav -->` section in `base.html` and add this list item:
+
+```html
+<!-- Inside <ul class="navbar-nav ..."> -->
+{% if current_user.is_authenticated %}
+  <li class="nav-item">
+    <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Dashboard</a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if request.endpoint == 'customer_view' %}active{% endif %}" href="{{ url_for('customer_view') }}">Customer View</a>
+  </li>
+  <!-- NEW: Calculator Link -->
+  <li class="nav-item">
+    <a class="nav-link {% if request.endpoint == 'calculator' %}active{% endif %}" href="{{ url_for('calculator') }}">
+      <i class="bi bi-calculator me-1"></i> AI Calculator
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if request.endpoint == 'upload_data' %}active{% endif %}" href="{{ url_for('upload_data') }}">
+      <i class="bi bi-cloud-upload me-1"></i> Upload
+    </a>
+  </li>
+{% endif %}

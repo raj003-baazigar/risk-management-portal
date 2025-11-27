@@ -1,0 +1,375 @@
+/* static/styles.css */
+:root {
+  --primary-blue: #2563eb;       /* Royal Blue */
+  --primary-dark: #1e40af;       /* Darker Blue for hover */
+  --header-bg: #0f172a;          /* Very dark slate for Navbar */
+  --bg-light: #f8fafc;           /* Light gray page background */
+  --text-dark: #334155;          /* Slate 700 */
+  --text-muted: #64748b;         /* Slate 500 */
+  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --border-radius: 0.75rem;      /* 12px rounded corners */
+}
+
+body {
+  background-color: var(--bg-light);
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--text-dark);
+}
+
+/* --- Navigation --- */
+.bank-navbar {
+  background-color: var(--header-bg) !important;
+  box-shadow: none;
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.navbar-brand span {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.nav-link {
+  font-weight: 500;
+  color: #cbd5e1 !important; /* Light gray */
+  margin-right: 1rem;
+}
+
+.nav-link.active {
+  color: #ffffff !important;
+}
+
+.btn-signout {
+  border: 1px solid #475569;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}
+
+/* --- Hero Section (Home/Login) --- */
+.hero-strip {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: white;
+  padding: 3rem 0;
+  margin-bottom: 2rem;
+}
+
+/* --- Cards --- */
+.card {
+  border: none;
+  border-radius: var(--border-radius);
+  box-shadow: var(--card-shadow);
+  background-color: #ffffff;
+  transition: transform 0.2s ease-in-out;
+}
+
+/* Special Highlight Card (Scenario Weighted ECL) */
+.card-highlight {
+  background-color: var(--primary-blue);
+  color: white;
+}
+
+.card-highlight .text-muted {
+  color: #bfdbfe !important; /* Light blue text */
+}
+
+.card-highlight h5, .card-highlight h3 {
+  color: white;
+}
+
+/* --- Typography & KPIs --- */
+.kpi-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.card-highlight .kpi-value {
+  color: white;
+}
+
+/* --- Tables --- */
+.table-custom th {
+  background-color: transparent;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid #e2e8f0;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.table-custom td {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+}
+
+.table-custom tr:last-child td {
+  border-bottom: none;
+}
+
+/* --- Badges (Pills) --- */
+.badge-stage-1 {
+  background-color: #dcfce7; /* Light Green */
+  color: #166534;            /* Dark Green */
+  font-weight: 600;
+  padding: 0.4em 0.8em;
+  border-radius: 9999px;
+}
+
+.badge-stage-2 {
+  background-color: #fef9c3; /* Light Yellow */
+  color: #854d0e;            /* Dark Yellow/Orange */
+  font-weight: 600;
+  padding: 0.4em 0.8em;
+  border-radius: 9999px;
+}
+
+.badge-stage-3 {
+  background-color: #fee2e2; /* Light Red */
+  color: #991b1b;            /* Dark Red */
+  font-weight: 600;
+  padding: 0.4em 0.8em;
+  border-radius: 9999px;
+}
+
+/* --- Inputs & Forms --- */
+.form-control {
+  border-radius: 0.5rem;
+  border: 1px solid #cbd5e1;
+  padding: 0.6rem 1rem;
+}
+
+.form-control:focus {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.btn-primary {
+  background-color: var(--primary-blue);
+  border: none;
+  padding: 0.6rem 1.5rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+/* --- Tabs --- */
+.nav-tabs {
+  border-bottom: 2px solid #e2e8f0;
+}
+.nav-tabs .nav-link {
+  border: none;
+  color: var(--text-muted) !important;
+  margin-right: 2rem;
+  padding-bottom: 1rem;
+  font-weight: 600;
+}
+.nav-tabs .nav-link.active {
+  color: var(--primary-blue) !important;
+  border-bottom: 2px solid var(--primary-blue);
+  background: transparent;
+}
+/* static/styles.css */
+
+/* ... (keep your existing styles) ... */
+
+/* --- Animations --- */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+  opacity: 0; /* Hidden initially, JS/CSS handles appearance */
+}
+
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+
+/* Refined Tab Buttons */
+.btn-tab {
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-weight: 500;
+  background: white;
+  transition: all 0.2s;
+}
+
+.btn-tab.active {
+  background-color: #2563eb; /* Royal Blue */
+  color: white;
+  border-color: #2563eb;
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+}
+
+/* static/styles.css - Additions */
+
+/* Hover Lift Effect for Cards */
+.hover-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-5px); /* Moves up slightly */
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Regulatory Badge */
+.reg-badge {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  padding: 0.5rem 1rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+/* Hero Gradient Animation */
+.hero-animated {
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+  background-size: 200% 200%;
+  animation: gradientMove 6s ease infinite;
+}
+
+@keyframes gradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* static/styles.css - New Additions for Dashboard */
+
+/* Futuristic Trend Indicators */
+.trend-indicator {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.trend-up { background: rgba(239, 68, 68, 0.1); color: #ef4444; } /* Red for bad increase (ECL) */
+.trend-down { background: rgba(34, 197, 94, 0.1); color: #22c55e; } /* Green for good decrease */
+.trend-neutral { background: rgba(100, 116, 139, 0.1); color: #64748b; }
+
+/* Visual Risk Bar in Table */
+.risk-meter-bg {
+  height: 6px;
+  width: 100px;
+  background-color: #f1f5f9;
+  border-radius: 10px;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.risk-meter-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 1s ease-out;
+}
+
+/* static/styles.css */
+
+/* ... keep your other styles ... */
+
+/* --- IMPROVED TAB SWITCHER (Segmented Control) --- */
+.nav-pills-custom {
+  background-color: #e2e8f0; /* Darker grey container for better contrast */
+  padding: 5px;
+  border-radius: 10px;
+  display: inline-flex;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); /* Inner shadow for depth */
+}
+
+.nav-pills-custom .nav-link {
+  color: #64748b; /* Medium slate for inactive text */
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 8px 20px;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+}
+
+/* Hover State (Interactive feedback) */
+.nav-pills-custom .nav-link:hover:not(.active) {
+  color: #1e293b; /* Darker text on hover */
+  background-color: rgba(255, 255, 255, 0.5); /* Subtle light hover */
+}
+
+/* Active State (The "Pop") */
+.nav-pills-custom .nav-link.active {
+  background-color: #2563eb; /* Royal Blue Background */
+  color: #ffffff !important; /* Force White Text */
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.4), 0 2px 4px -1px rgba(37, 99, 235, 0.2); /* Glowing Blue Shadow */
+  transform: translateY(-1px); /* Slight lift effect */
+}
+
+/* Optional: Improve the Export Button to match */
+.btn-outline-secondary {
+  border-color: #cbd5e1;
+  color: #475569;
+  font-weight: 600;
+  background-color: white;
+}
+.btn-outline-secondary:hover {
+  background-color: #f8fafc;
+  color: #2563eb;
+  border-color: #2563eb;
+}
+
+/* static/styles.css - New Additions */
+
+/* Live Pulse Animation */
+.pulse-ring {
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: pulse-green 2s infinite;
+}
+@keyframes pulse-green {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+/* Range Slider Styling */
+.form-range::-webkit-slider-thumb {
+  background: #2563eb;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.form-range::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* Stress Test Card */
+.bg-gradient-dark {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+}

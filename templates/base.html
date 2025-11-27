@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>XYZ Bank • Risk Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    
+    <!-- html2pdf.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+      /* --- CHATBOT WIDGET STYLES --- */
+      #chat-widget-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1050;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+      }
+
+      #chat-window {
+        width: 350px;
+        height: 450px;
+        background-color: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        display: none; /* Hidden by default */
+        flex-direction: column;
+        overflow: hidden;
+        margin-bottom: 15px;
+        border: 1px solid #e2e8f0;
+        animation: slideUp 0.3s ease-out;
+      }
+
+      @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      .chat-header {
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        color: white;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+      }
+
+      .chat-body {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        background-color: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .chat-footer {
+        padding: 15px;
+        background-color: white;
+        border-top: 1px solid #e2e8f0;
+      }
+
+      .chat-message {
+        padding: 10px 15px;
+        border-radius: 12px;
+        max-width: 80%;
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+
+      .msg-bot {
+        background-color: white;
+        color: #334155;
+        border: 1px solid #e2e8f0;
+        align-self: flex-start;
+        border-bottom-left-radius: 2px;
+      }
+
+      .msg-user {
+        background-color: #2563eb;
+        color: white;
+        align-self: flex-end;
+        border-bottom-right-radius: 2px;
+      }
+
+      #chat-toggle-btn {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: #2563eb;
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        transition: transform 0.2s, background-color 0.2s;
+      }
+
+      #chat-toggle-btn:hover {
+        transform: scale(1.05);
+        background-color: #1d4ed8;
+      }
+
+      #chat-input:focus {
+        box-shadow: none;
+        border-color: #2563eb;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bank-navbar">
+      <div class="container-fluid px-4">
+        <a class="navbar-brand d-flex align-items-center" href="{{ url_for('home') }}">
+          <i class="bi bi-building me-2"></i>
+          <span>XYZ Bank · Risk & IFRS 9</span>
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNav">
+          <ul class="navbar-nav mx-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}">Home</a>
+            </li>
+            {% if current_user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Dashboard</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'customer_view' %}active{% endif %}" href="{{ url_for('customer_view') }}">Customer View</a>
+            </li>
+            <!-- NEW: Calculator Link -->
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'calculator' %}active{% endif %}" href="{{ url_for('calculator') }}">
+                <i class="bi bi-calculator me-1"></i> AI Calculator
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.endpoint == 'upload_data' %}active{% endif %}" href="{{ url_for('upload_data') }}">
+                <i class="bi bi-cloud-upload me-1"></i> Upload
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+
+          <div class="d-flex align-items-center gap-3">
+            {% if current_user.is_authenticated %}
+              <div class="dropdown">
+                <button class="btn btn-sm btn-outline-light dropdown-toggle border-0" type="button" data-bs-toggle="dropdown">
+                  <i class="bi bi-person-circle me-1"></i> {{ current_user.full_name or current_user.username }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow">
+                  <li><span class="dropdown-header">Logged in as {{ current_user.username }}</span></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Sign Out</a></li>
+                </ul>
+              </div>
+            {% else %}
+              <a href="{{ url_for('login') }}" class="text-light text-decoration-none small me-3">Login</a>
+              <a href="{{ url_for('signup') }}" class="btn btn-sm btn-primary">Sign Up</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Optional Hero Section for Child Pages -->
+    {% block hero %}{% endblock %}
+
+    <!-- Main Content Area -->
+    <main class="container-fluid px-4 py-4" style="min-height: 70vh;">
+      <!-- Flash Messages -->
+      {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+          <div class="row justify-content-center">
+            <div class="col-md-6">
+              {% for category, msg in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                  {{ msg }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      {% endwith %}
+      
+      <!-- Child content is injected here -->
+      {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center text-muted small py-4 mt-auto border-top">
+      XYZ Bank · Internal Use Only · IFRS 9 Impairment & Risk Analytics Portal <br> CONFIDENTIAL
+    </footer>
+
+    <!-- CHATBOT WIDGET START -->
+    <div id="chat-widget-container">
+      <!-- Chat Window -->
+      <div id="chat-window">
+        <div class="chat-header">
+          <div>
+            <i class="bi bi-robot me-2"></i><strong>Risk Assistant</strong>
+          </div>
+          <button type="button" class="btn-close btn-close-white" aria-label="Close" onclick="toggleChat()"></button>
+        </div>
+        
+        <div class="chat-body" id="chat-messages">
+          <div class="chat-message msg-bot">
+            Hello! I am your Risk Assistant. Ask me about IFRS 9 stages, ECL calculations, or portfolio trends.
+          </div>
+        </div>
+        
+        <div class="chat-footer">
+          <div class="input-group">
+            <input type="text" id="chat-input" class="form-control border-end-0" placeholder="Type your question..." onkeypress="handleEnter(event)">
+            <button class="btn btn-outline-secondary border-start-0 bg-white" type="button" onclick="sendMessage()">
+              <i class="bi bi-send-fill text-primary"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Toggle Button (UPDATED ICON HERE) -->
+      <button id="chat-toggle-btn" onclick="toggleChat()">
+        <i class="bi bi-robot fs-2"></i>
+      </button>
+    </div>
+    <!-- CHATBOT WIDGET END -->
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Chatbot Script -->
+    <script>
+      function toggleChat() {
+        const window = document.getElementById('chat-window');
+        const btnIcon = document.querySelector('#chat-toggle-btn i');
+        
+        if (window.style.display === 'none' || window.style.display === '') {
+          window.style.display = 'flex';
+          btnIcon.className = 'bi bi-x-lg fs-4';
+          document.getElementById('chat-input').focus();
+        } else {
+          window.style.display = 'none';
+          // UPDATED: Reset icon to robot when closed
+          btnIcon.className = 'bi bi-robot fs-2';
+        }
+      }
+
+      function handleEnter(e) {
+        if (e.key === 'Enter') sendMessage();
+      }
+
+      async function sendMessage() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        // 1. Add User Message
+        addMessage(text, 'user');
+        input.value = '';
+
+        // 2. Show Typing Indicator
+        showTypingIndicator();
+        
+        try {
+          // 3. Call Backend API (Gemini)
+          const response = await fetch('/chat_api', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+          });
+          
+          const data = await response.json();
+          
+          // 4. Remove Typing & Show Bot Response
+          removeTypingIndicator();
+          addMessage(data.response, 'bot');
+          
+        } catch (error) {
+          removeTypingIndicator();
+          addMessage("Sorry, I'm having trouble connecting to the AI server.", 'bot');
+          console.error("Chat Error:", error);
+        }
+      }
+
+      function addMessage(text, sender) {
+        const body = document.getElementById('chat-messages');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `chat-message msg-${sender} animate-fade-up`;
+        // Use innerText to prevent XSS
+        msgDiv.innerText = text; 
+        body.appendChild(msgDiv);
+        body.scrollTop = body.scrollHeight; 
+      }
+
+      function showTypingIndicator() {
+        const body = document.getElementById('chat-messages');
+        const div = document.createElement('div');
+        div.id = 'typing-indicator';
+        div.className = 'chat-message msg-bot text-muted fst-italic';
+        div.innerHTML = '<span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true"></span> Thinking...';
+        body.appendChild(div);
+        body.scrollTop = body.scrollHeight;
+      }
+
+      function removeTypingIndicator() {
+        const el = document.getElementById('typing-indicator');
+        if (el) el.remove();
+      }
+    </script>
+  </body>
+</html>

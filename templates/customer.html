@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid px-4 pb-5">
+
+  <!-- 1. TOP HEADER WITH SEARCH -->
+  <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-up">
+    <div>
+      <h3 class="fw-bold text-dark mb-0">Customer Risk Profile</h3>
+      {% if customer %}
+      <p class="text-muted small mb-0">
+        ID: <span class="font-monospace text-dark fw-bold">{{ customer[id_col] }}</span> &bull; 
+        Segment: <strong>{{ customer.SEGMENT }}</strong>
+      </p>
+      {% endif %}
+    </div>
+    
+    <div class="d-flex gap-2 align-items-center">
+      <form action="{{ url_for('customer_view') }}" method="get" class="d-flex">
+        <input type="text" name="id" class="form-control form-control-sm border-secondary-subtle" placeholder="Search ID..." required>
+        <button type="submit" class="btn btn-sm btn-primary ms-1"><i class="bi bi-search"></i></button>
+      </form>
+      <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm bg-white"><i class="bi bi-grid-fill"></i> Dashboard</a>
+      <button onclick="window.print()" class="btn btn-outline-secondary btn-sm bg-white"><i class="bi bi-printer"></i></button>
+    </div>
+  </div>
+
+  <!-- EMPTY STATE -->
+  {% if not customer %}
+  <div class="row justify-content-center mt-5 animate-fade-up">
+    <div class="col-md-6 col-lg-5">
+      <div class="card shadow-sm border-0 p-5 text-center">
+        <div class="mb-4 text-primary opacity-50"><i class="bi bi-person-badge-fill" style="font-size: 4rem;"></i></div>
+        <h4 class="fw-bold text-dark">Locate Customer Record</h4>
+        <p class="text-muted mb-4">Enter a unique Customer ID to retrieve risk metrics.</p>
+        <form action="{{ url_for('customer_view') }}" method="get">
+          <div class="input-group input-group-lg">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" name="id" class="form-control border-start-0" placeholder="e.g. 1001" autofocus required>
+            <button class="btn btn-primary fw-bold" type="submit">Search</button>
+          </div>
+        </form>
+        {% if error %}<div class="alert alert-danger mt-4 small py-2 mb-0 border-0 bg-danger bg-opacity-10 text-danger">{{ error }}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if customer %}
+  <!-- METRICS -->
+  <div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6 animate-fade-up delay-1">
+      <div class="card p-3 shadow-sm border-0 h-100 hover-lift">
+        <small class="text-muted fw-bold text-uppercase">Risk Grade</small>
+        <div class="mt-2">
+          {% if customer.risk_band == 'High' %}
+            <h2 class="text-danger fw-bold mb-0">High Risk</h2>
+            <span class="badge bg-danger bg-opacity-10 text-danger border border-danger mt-1">Stage 3 / Default</span>
+          {% elif customer.risk_band == 'Medium' %}
+            <h2 class="text-warning fw-bold mb-0">Medium Risk</h2>
+            <span class="badge bg-warning bg-opacity-10 text-warning border border-warning mt-1">Stage 2 / Watch</span>
+          {% else %}
+            <h2 class="text-success fw-bold mb-0">Low Risk</h2>
+            <span class="badge bg-success bg-opacity-10 text-success border border-success mt-1">Stage 1 / Performing</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6 animate-fade-up delay-1">
+      <div class="card p-3 shadow-sm border-0 h-100 hover-lift">
+        <small class="text-muted fw-bold text-uppercase">PD %</small>
+        <h2 class="mb-0 fw-bold text-dark mt-2">{{ (customer["PRED_PD"] | default(0) * 100) | round(2) }}%</h2>
+        <div class="progress mt-2" style="height: 6px;">
+          <div class="progress-bar {% if customer.risk_band == 'High' %}bg-danger{% elif customer.risk_band == 'Medium' %}bg-warning{% else %}bg-success{% endif %}" style="width: {{ (customer['PRED_PD'] | default(0) * 100) }}%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6 animate-fade-up delay-2">
+      <div class="card p-3 shadow-sm border-0 h-100 hover-lift">
+        <small class="text-muted fw-bold text-uppercase">Exposure (EAD)</small>
+        <h2 class="mb-0 fw-bold text-dark mt-2">{{ "{:,.0f}".format(customer["EAD"] | default(0)) }}</h2>
+        <small class="text-muted">Outstanding Balance</small>
+      </div>
+    </div>
+    <div class="col-xl-3 col-md-6 animate-fade-up delay-2">
+      <div class="card p-3 shadow-sm border-0 h-100 bg-primary text-white hover-lift">
+        <small class="text-white-50 fw-bold text-uppercase">Weighted ECL</small>
+        <h2 class="mb-0 fw-bold mt-2" id="custWeightedECL">{{ "{:,.0f}".format(customer["ECL_weighted"] | default(0)) }}</h2>
+        <small class="text-white-50" id="eclSubtitle">Current Provision</small>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE ML CALCULATOR -->
+  <div class="row mb-4 animate-fade-up delay-3">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm bg-white">
+        <div class="card-header bg-transparent border-0 pt-3 ps-3">
+          <h5 class="fw-bold text-primary mb-0"><i class="bi bi-robot me-2"></i>Live AI Risk Scoring</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="row">
+            <!-- INPUTS -->
+            <div class="col-lg-4 border-end">
+              <h6 class="text-muted text-uppercase small fw-bold mb-3">Model Parameters</h6>
+              <form id="mlForm">
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">Outstanding Balance ($)</label>
+                  <input type="number" id="mlOutstanding" class="form-control" value="{{ customer['EAD'] | default(50000) | int }}">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">Monthly Instalment ($)</label>
+                  <input type="number" id="mlInstalment" class="form-control" value="1500">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">Effective Interest Rate (decimal)</label>
+                  <input type="number" id="mlEir" class="form-control" value="0.08" step="0.001">
+                  <div class="form-text small">e.g., 0.08 for 8%</div>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold">Remaining Term (Months)</label>
+                  <input type="number" id="mlTerm" class="form-control" value="36">
+                </div>
+                <button type="button" class="btn btn-primary w-100 fw-bold" onclick="predictRisk()">
+                  <i class="bi bi-lightning-charge-fill me-1"></i> Run Model Prediction
+                </button>
+              </form>
+            </div>
+
+            <!-- OUTPUTS -->
+            <div class="col-lg-8 ps-lg-5 d-flex flex-column justify-content-center">
+              <div id="mlResult" class="text-center py-5">
+                <h5 class="text-muted opacity-50">Enter values and click "Run Model" to get real-time predictions.</h5>
+              </div>
+              
+              <div id="mlOutput" style="display: none;">
+                <div class="row text-center mb-4">
+                  <div class="col-4">
+                    <small class="text-muted fw-bold text-uppercase">AI Predicted PD</small>
+                    <h2 class="text-primary fw-bold mb-0"><span id="outPD">0.00</span>%</h2>
+                  </div>
+                  <div class="col-4 border-start border-end">
+                    <small class="text-muted fw-bold text-uppercase">Model Implied LGD</small>
+                    <h2 class="text-warning fw-bold mb-0"><span id="outLGD">0.00</span>%</h2>
+                  </div>
+                  <div class="col-4">
+                    <small class="text-muted fw-bold text-uppercase">Projected ECL</small>
+                    <h2 class="text-danger fw-bold mb-0">$<span id="outECL">0</span></h2>
+                  </div>
+                </div>
+                
+                <label class="small text-muted fw-bold mb-1">Risk Confidence Meter</label>
+                <div class="progress" style="height: 12px; border-radius: 6px;">
+                  <div id="mlBar" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div class="d-flex justify-content-between mt-1 small text-muted">
+                  <span>Safe</span>
+                  <span>Critical</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STRESS LAB -->
+  <div class="row mb-4 animate-fade-up delay-3">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm bg-gradient-dark text-white overflow-hidden">
+        <div class="card-header bg-transparent border-secondary border-opacity-25 py-3">
+          <h5 class="fw-bold text-info mb-0"><i class="bi bi-cpu-fill me-2"></i>Stress Test Simulator</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="row g-0">
+            <div class="col-lg-8 p-4 border-end border-secondary border-opacity-25">
+              <div class="row g-3 align-items-center mb-3">
+                <div class="col-3 text-end small fw-bold text-light">Base Case</div>
+                <div class="col-7"><input type="range" class="form-range" id="rangeBase" min="0" max="100" value="40"></div>
+                <div class="col-2 small text-info fw-bold"><span id="valBase">40</span>%</div>
+              </div>
+              <div class="row g-3 align-items-center mb-3">
+                <div class="col-3 text-end small fw-bold text-light">Upside</div>
+                <div class="col-7"><input type="range" class="form-range" id="rangeUp" min="0" max="100" value="30"></div>
+                <div class="col-2 small text-success fw-bold"><span id="valUp">30</span>%</div>
+              </div>
+              <div class="row g-3 align-items-center">
+                <div class="col-3 text-end small fw-bold text-light">Downside</div>
+                <div class="col-7"><input type="range" class="form-range" id="rangeDown" min="0" max="100" value="30"></div>
+                <div class="col-2 small text-danger fw-bold"><span id="valDown">30</span>%</div>
+              </div>
+              <div class="mt-3 text-end">
+                <small id="weightWarning" class="text-danger fw-bold me-3" style="display:none;">Sum must be 100%</small>
+                <button class="btn btn-sm btn-outline-light" onclick="resetSim()">Reset</button>
+              </div>
+            </div>
+            <div class="col-lg-4 p-4 d-flex flex-column justify-content-center align-items-center bg-black bg-opacity-25">
+              <small class="text-white-50 text-uppercase fw-bold mb-2">Simulated ECL</small>
+              <h2 class="display-6 fw-bold text-warning mb-1" id="simResult">{{ "{:,.0f}".format(customer["ECL_weighted"] | default(0)) }}</h2>
+              <div id="simDiff" class="badge bg-secondary bg-opacity-25 border border-secondary text-light mt-2">No Change</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2x2 ANALYTICS GRID -->
+  <div class="row g-4 mb-5">
+    <div class="col-md-6 animate-fade-up delay-3">
+      <div class="card shadow-sm border-0 p-4 h-100">
+        <h6 class="fw-bold text-dark mb-3">Default Probability Profile</h6>
+        <div style="height: 250px; position: relative;"><canvas id="pdDonut"></canvas></div>
+      </div>
+    </div>
+    <div class="col-md-6 animate-fade-up delay-3">
+      <div class="card shadow-sm border-0 p-4 h-100">
+        <h6 class="fw-bold text-dark mb-3">Risk Driver Composition</h6>
+        <div style="height: 250px; position: relative;"><canvas id="driversBar"></canvas></div>
+      </div>
+    </div>
+    <div class="col-md-6 animate-fade-up delay-4">
+      <div class="card shadow-sm border-0 p-4 h-100">
+        <h6 class="fw-bold text-dark mb-3">Peer Benchmark (Vs Portfolio Avg)</h6>
+        <div style="height: 250px; position: relative;"><canvas id="benchmarkChart"></canvas></div>
+      </div>
+    </div>
+    <div class="col-md-6 animate-fade-up delay-4">
+      <div class="card shadow-sm border-0 p-4 h-100">
+        <h6 class="fw-bold text-dark mb-3">Scenario Impact Analysis</h6>
+        <div style="height: 250px; position: relative;"><canvas id="scenarioChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  {% if customer %}
+  // DATA
+  const pdVal = {{ customer["PRED_PD"] | default(0) }};
+  const lgdVal = {{ customer["LGD"] | default(0) }};
+  const eadVal = {{ customer["EAD"] | default(0) }};
+  const currentWeighted = {{ customer["ECL_weighted"] | default(0) }};
+  const avgPd = {{ benchmarks.avg_pd }};
+  const avgLgd = {{ benchmarks.avg_lgd }};
+  const eclBase = currentWeighted * 0.85; 
+  const eclUp = currentWeighted * 0.70;   
+  const eclDown = currentWeighted * 1.50; 
+
+  // --- ML PREDICTION SCRIPT ---
+  function predictRisk() {
+    const data = {
+      outstanding: document.getElementById('mlOutstanding').value,
+      instalment: document.getElementById('mlInstalment').value,
+      eir: document.getElementById('mlEir').value,
+      term: document.getElementById('mlTerm').value
+    };
+
+    fetch('/predict_api', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(res => {
+      if(res.error) { alert("Error: " + res.error); return; }
+      
+      document.getElementById('mlResult').style.display = 'none';
+      document.getElementById('mlOutput').style.display = 'block';
+      
+      document.getElementById('outPD').innerText = res.pd;
+      document.getElementById('outLGD').innerText = res.lgd;
+      document.getElementById('outECL').innerText = res.ecl.toLocaleString();
+      
+      const bar = document.getElementById('mlBar');
+      bar.style.width = res.pd + "%";
+      bar.className = res.pd < 5 ? "progress-bar bg-success" : (res.pd < 20 ? "progress-bar bg-warning" : "progress-bar bg-danger");
+    });
+  }
+
+  // --- STRESS SIMULATOR ---
+  const rBase = document.getElementById('rangeBase'), rUp = document.getElementById('rangeUp'), rDown = document.getElementById('rangeDown');
+  const vBase = document.getElementById('valBase'), vUp = document.getElementById('valUp'), vDown = document.getElementById('valDown');
+  const resDisplay = document.getElementById('simResult'), diffDisplay = document.getElementById('simDiff'), warning = document.getElementById('weightWarning');
+  const mainKpi = document.getElementById('custWeightedECL'), subTitle = document.getElementById('eclSubtitle');
+
+  function updateSim() {
+    const wB = parseInt(rBase.value), wU = parseInt(rUp.value), wD = parseInt(rDown.value);
+    vBase.innerText = wB; vUp.innerText = wU; vDown.innerText = wD;
+    const totalW = wB + wU + wD;
+    warning.style.display = totalW !== 100 ? 'inline-block' : 'none';
+    resDisplay.style.opacity = totalW !== 100 ? "0.5" : "1";
+
+    const newECL = (eclBase * (wB/100)) + (eclUp * (wU/100)) + (eclDown * (wD/100));
+    resDisplay.innerText = Math.round(newECL).toLocaleString();
+    
+    const diff = newECL - currentWeighted;
+    const diffPerc = ((diff / currentWeighted) * 100).toFixed(2);
+
+    if (Math.abs(diff) < 10) {
+        diffDisplay.innerHTML = `No Change`;
+        diffDisplay.className = "badge bg-secondary bg-opacity-25 border border-secondary text-light mt-2";
+    } else if(diff > 0) {
+        diffDisplay.innerHTML = `+${Math.round(diff).toLocaleString()} (${diffPerc}%)`;
+        diffDisplay.className = "badge bg-danger bg-opacity-25 border border-danger text-danger mt-2";
+    } else {
+        diffDisplay.innerHTML = `-${Math.round(Math.abs(diff)).toLocaleString()} (${diffPerc}%)`;
+        diffDisplay.className = "badge bg-success bg-opacity-25 border border-success text-success mt-2";
+    }
+    if(totalW === 100) mainKpi.innerText = Math.round(newECL).toLocaleString();
+  }
+  function resetSim() { rBase.value = 40; rUp.value = 30; rDown.value = 30; updateSim(); }
+  [rBase, rUp, rDown].forEach(el => el.addEventListener('input', updateSim));
+
+  // --- CHARTS ---
+  Chart.defaults.font.family = "'Segoe UI', system-ui";
+  Chart.defaults.color = "#64748b";
+  const commonOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+
+  new Chart(document.getElementById('pdDonut'), {
+    type: 'doughnut',
+    data: { labels: ['PD', 'Survival'], datasets: [{ data: [pdVal, 1-pdVal], backgroundColor: ["#ef4444", "#f1f5f9"], borderWidth: 0 }] },
+    options: { ...commonOpts, cutout: '60%', plugins: { legend: { position: 'bottom' } } }
+  });
+
+  new Chart(document.getElementById('driversBar'), {
+    type: 'bar',
+    data: {
+      labels: ['PD (%)', 'LGD (%)', 'EAD (Scaled)'],
+      datasets: [{ data: [pdVal*100, lgdVal*100, eadVal/2500], backgroundColor: ["#3b82f6", "#f59e0b", "#10b981"], borderRadius: 4, barPercentage: 0.6 }]
+    },
+    options: { ...commonOpts, scales: { y: { beginAtZero: true, grid: { borderDash: [4,4] } }, x: { grid: { display: false } } } }
+  });
+
+  new Chart(document.getElementById('benchmarkChart'), {
+    type: 'bar',
+    data: {
+      labels: ['PD (%)', 'LGD (%)'],
+      datasets: [
+        { label: 'Customer', data: [pdVal*100, lgdVal*100], backgroundColor: "#3b82f6", borderRadius: 4, barPercentage: 0.6 },
+        { label: 'Portfolio Avg', data: [avgPd*100, avgLgd*100], backgroundColor: "#e2e8f0", borderRadius: 4, barPercentage: 0.6 }
+      ]
+    },
+    options: { ...commonOpts, plugins: { legend: { display: true, position: 'bottom' } }, scales: { y: { beginAtZero: true, grid: { borderDash: [4,4] } }, x: { grid: { display: false } } } }
+  });
+
+  new Chart(document.getElementById('scenarioChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Upside', 'Base', 'Downside', 'Weighted'],
+      datasets: [{ data: [eclUp, eclBase, eclDown, currentWeighted], backgroundColor: ["#22c55e", "#3b82f6", "#ef4444", "#6366f1"], borderRadius: 4, barPercentage: 0.6 }]
+    },
+    options: { ...commonOpts, scales: { y: { beginAtZero: true, grid: { borderDash: [4,4] } }, x: { grid: { display: false } } } }
+  });
+  {% endif %}
+</script>
+<style>.bg-gradient-dark { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }</style>
+{% endblock %}

@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid px-4 pb-5">
+  
+  <!-- DASHBOARD HEADER -->
+  <div class="d-flex justify-content-between align-items-end mb-4 animate-fade-up">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <h3 class="fw-bold text-dark mb-0">Risk Command Center</h3>
+        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-3 pulse-ring">
+          <i class="bi bi-circle-fill small me-2" style="font-size: 6px; vertical-align: middle;"></i>Live Data
+        </span>
+      </div>
+      <p class="text-muted small mb-0">
+        Portfolio: <strong>Retail & SME</strong> &bull; Engine: <strong>IFRS 9 v2.4</strong>
+      </p>
+    </div>
+    
+    <div class="d-flex gap-2">
+      <!-- Print Report Button -->
+      <button onclick="generatePDF()" class="btn btn-outline-secondary btn-sm d-flex align-items-center bg-white">
+        <i class="bi bi-printer me-2"></i> Export Report
+      </button>
+      
+      <!-- Tab Switcher -->
+      <ul class="nav nav-pills nav-pills-custom" id="dashboardTabs" role="tablist">
+        <li class="nav-item">
+          <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button">
+            <i class="bi bi-grid-fill me-2"></i>Overview
+          </button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" id="analytics-tab" data-bs-toggle="pill" data-bs-target="#analytics" type="button">
+            <i class="bi bi-sliders me-2"></i>Analytics & Sim
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="report-content"> <!-- Wrap content for PDF -->
+    <div class="tab-content" id="dashboardTabContent">
+      
+      <!-- ================= OVERVIEW TAB ================= -->
+      <div class="tab-pane fade show active" id="overview">
+        
+        <!-- KPI CARDS -->
+        <div class="row g-3 mb-4">
+          <!-- KPI 1 -->
+          <div class="col-xl-3 col-md-6 animate-fade-up delay-1">
+            <div class="card p-3 shadow-sm border-0 h-100 hover-lift position-relative overflow-hidden">
+              <div class="position-absolute top-0 end-0 p-3 opacity-10"><i class="bi bi-people-fill fs-1 text-primary"></i></div>
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <small class="text-muted fw-bold text-uppercase tracking-wide">Total Exposure</small>
+                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Total active accounts"></i>
+              </div>
+              <h2 class="mb-1 fw-bold text-dark">{{ summary.total_accounts }}</h2>
+              <div>
+                <span class="trend-indicator trend-neutral"><i class="bi bi-dash"></i> Stable</span>
+                <small class="text-muted ms-1">vs last month</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI 2 -->
+          <div class="col-xl-3 col-md-6 animate-fade-up delay-1">
+            <div class="card p-3 shadow-sm border-0 h-100 hover-lift position-relative overflow-hidden">
+               <div class="position-absolute top-0 end-0 p-3 opacity-10"><i class="bi bi-activity fs-1 text-warning"></i></div>
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <small class="text-muted fw-bold text-uppercase tracking-wide">Avg. PD</small>
+                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Weighted Probability of Default"></i>
+              </div>
+              <h2 class="mb-1 fw-bold text-dark">{{ (summary.avg_pd * 100)|round(2) }}%</h2>
+              <div>
+                <span class="trend-indicator trend-down"><i class="bi bi-arrow-down"></i> 0.5%</span>
+                <small class="text-muted ms-1">Improvement</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI 3 -->
+          <div class="col-xl-3 col-md-6 animate-fade-up delay-2">
+            <div class="card p-3 shadow-sm border-0 h-100 hover-lift position-relative overflow-hidden">
+               <div class="position-absolute top-0 end-0 p-3 opacity-10"><i class="bi bi-currency-dollar fs-1 text-danger"></i></div>
+               <div class="d-flex justify-content-between align-items-start mb-2">
+                  <small class="text-muted fw-bold text-uppercase tracking-wide">12-Month ECL</small>
+                  <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="Base Scenario Provision"></i>
+               </div>
+               <h2 class="mb-1 fw-bold text-dark">{{ "{:,.0f}".format(summary.total_ecl_12m) }}</h2>
+               <div>
+                  <span class="trend-indicator trend-up"><i class="bi bi-arrow-up"></i> 1.2%</span>
+                  <small class="text-muted ms-1">vs Base Case</small>
+               </div>
+            </div>
+          </div>
+
+          <!-- KPI 4 (Dynamic for Simulator) -->
+          <div class="col-xl-3 col-md-6 animate-fade-up delay-2">
+            <div class="card p-3 shadow-sm border-0 h-100 bg-primary text-white hover-lift position-relative overflow-hidden">
+               <!-- Abstract background graphic -->
+               <div class="position-absolute" style="right: -20px; bottom: -20px; font-size: 8rem; opacity: 0.1;"><i class="bi bi-layers-fill"></i></div>
+               
+               <div class="d-flex justify-content-between align-items-start mb-2">
+                  <small class="text-white-50 fw-bold text-uppercase tracking-wide">Scenario Weighted ECL</small>
+                  <i class="bi bi-info-circle text-white-50" data-bs-toggle="tooltip" title="Includes Forward Looking Information"></i>
+               </div>
+               <!-- ID added here for JS updates -->
+               <h2 class="mb-1 fw-bold" id="kpiWeightedECL">{{ "{:,.0f}".format(summary.total_ecl_weighted) }}</h2>
+               <div class="text-white-50 small mt-2">
+                 <i class="bi bi-check-circle-fill me-1"></i> Includes FLI Buffers
+               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DYNAMIC RISK TABLE -->
+        <div class="card shadow-sm border-0 mb-4 animate-fade-up delay-3">
+          <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+            <div>
+              <h6 class="fw-bold mb-0" id="tableTitle"><i class="bi bi-lightning-charge-fill me-2"></i>Critical Attention Required</h6>
+              <p class="text-muted small mb-0" id="tableSubtitle">Top 10 accounts by projected loss intensity</p>
+            </div>
+            
+            <div class="d-flex gap-2">
+               <select id="stageSelector" class="form-select form-select-sm bg-light border-0 fw-bold text-muted" style="width: 150px;">
+                  <option value="3" selected>Stage 3 (High)</option>
+                  <option value="2">Stage 2 (Med)</option>
+                  <option value="1">Stage 1 (Low)</option>
+               </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.9rem;">
+              <thead class="bg-light text-secondary text-uppercase small fw-bold">
+                <tr>
+                  <th class="ps-4 py-3">Customer ID</th>
+                  <th class="py-3">Segment</th>
+                  <th class="py-3">Stage Status</th>
+                  <th class="py-3">Risk Profile (PD)</th>
+                  <th class="py-3">Exposure (EAD)</th>
+                  <th class="py-3">Provision (ECL)</th>
+                  <th class="py-3">Action</th>
+                </tr>
+              </thead>
+              <tbody id="riskTableBody">
+                <!-- JS Injects Rows Here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div> <!-- End Overview Tab -->
+
+      <!-- ================= ANALYTICS & SIMULATION TAB ================= -->
+      <div class="tab-pane fade" id="analytics">
+        
+        <!-- STRESS TESTING SIMULATOR -->
+        <div class="row mb-4 animate-fade-up">
+          <div class="col-12">
+            <div class="card border-0 shadow-sm bg-gradient-dark text-white overflow-hidden">
+              <div class="row g-0">
+                <!-- Lab Intro -->
+                <div class="col-md-4 p-4 border-end border-secondary border-opacity-25 d-flex flex-column justify-content-center">
+                  <h5 class="fw-bold text-info mb-3"><i class="bi bi-cpu-fill me-2"></i>Stress Test Lab</h5>
+                  <p class="text-white-50 small mb-3">
+                    Adjust macro-economic scenario weights to simulate portfolio impact (Sensitivity Analysis).
+                  </p>
+                  <div class="p-3 bg-white bg-opacity-10 rounded border border-white border-opacity-10 text-center">
+                    <small class="text-white-50 text-uppercase fw-bold">Projected Total ECL</small>
+                    <h2 class="fw-bold mb-0 text-warning" id="simResult">{{ "{:,.0f}".format(summary.total_ecl_weighted) }}</h2>
+                    <small class="text-white-50" id="simDiff">No Change</small>
+                  </div>
+                </div>
+                
+                <!-- Sliders -->
+                <div class="col-md-8 p-4">
+                  <div class="row g-3 align-items-center mb-3">
+                    <div class="col-3 text-end small fw-bold">Base Case</div>
+                    <div class="col-7"><input type="range" class="form-range" id="rangeBase" min="0" max="100" value="40"></div>
+                    <div class="col-2 small text-info fw-bold"><span id="valBase">40</span>%</div>
+                  </div>
+                  <div class="row g-3 align-items-center mb-3">
+                    <div class="col-3 text-end small fw-bold">Upside (Bull)</div>
+                    <div class="col-7"><input type="range" class="form-range" id="rangeUp" min="0" max="100" value="30"></div>
+                    <div class="col-2 small text-success fw-bold"><span id="valUp">30</span>%</div>
+                  </div>
+                  <div class="row g-3 align-items-center">
+                    <div class="col-3 text-end small fw-bold">Downside (Bear)</div>
+                    <div class="col-7"><input type="range" class="form-range" id="rangeDown" min="0" max="100" value="30"></div>
+                    <div class="col-2 small text-danger fw-bold"><span id="valDown">30</span>%</div>
+                  </div>
+                  <div class="mt-4 d-flex justify-content-between align-items-center">
+                     <div id="weightWarning" class="text-danger small fw-bold" style="display:none;">
+                       <i class="bi bi-exclamation-triangle-fill me-1"></i> Weights must sum to 100%
+                     </div>
+                     <button class="btn btn-sm btn-outline-light ms-auto" onclick="resetSim()">Reset Defaults</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI INSIGHTS -->
+        <div class="row mb-4 animate-fade-up">
+          <div class="col-12">
+            <div class="card border-0 shadow-sm bg-primary bg-gradient text-white">
+              <div class="card-body p-4 d-flex align-items-center">
+                <div class="me-4 bg-white bg-opacity-25 p-3 rounded-circle">
+                   <i class="bi bi-robot fs-3 text-white"></i>
+                </div>
+                <div>
+                  <h5 class="fw-bold mb-1">Automated Portfolio Insights</h5>
+                  <p class="mb-0 opacity-75 small">
+                    <strong>Analysis:</strong> The portfolio shows a <span class="fw-bold text-white">heavier concentration in Retail</span> compared to SME. 
+                    PD distribution is skewed towards the <span class="fw-bold text-white">low-risk bucket (< 3%)</span>, indicating healthy origination. 
+                    However, monitor <strong>Stage 2 migration</strong> in the Corporate segment as ECL intensity is rising.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHARTS -->
+        <div class="row g-4">
+             <div class="col-md-6"><div class="card p-4 h-100 shadow-sm border-0"><canvas id="pdChart"></canvas></div></div>
+             <div class="col-md-6"><div class="card p-4 h-100 shadow-sm border-0"><canvas id="stageChart"></canvas></div></div>
+             <div class="col-md-6"><div class="card p-4 h-100 shadow-sm border-0"><canvas id="mixChart"></canvas></div></div>
+             <div class="col-md-6"><div class="card p-4 h-100 shadow-sm border-0"><canvas id="segChart"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  // --- 1. DATA FROM BACKEND ---
+  const rawData = {
+    3: {{ summary.top_s3 | tojson }},
+    2: {{ summary.top_s2 | tojson }},
+    1: {{ summary.top_s1 | tojson }}
+  };
+  const idColName = "{{ id_col }}";
+  const currentWeighted = {{ summary.total_ecl_weighted }};
+
+  // --- 2. AUDIT-GRADE STRESS TEST LOGIC ---
+  // Calibrated scenario values that sum to 1.0 at 40/30/30 weights
+  const eclBase = currentWeighted * 0.85;  
+  const eclUp = currentWeighted * 0.70;    
+  const eclDown = currentWeighted * 1.50;  
+
+  const rBase = document.getElementById('rangeBase');
+  const rUp = document.getElementById('rangeUp');
+  const rDown = document.getElementById('rangeDown');
+  const vBase = document.getElementById('valBase');
+  const vUp = document.getElementById('valUp');
+  const vDown = document.getElementById('valDown');
+  const resDisplay = document.getElementById('simResult');
+  const diffDisplay = document.getElementById('simDiff');
+  const warning = document.getElementById('weightWarning');
+  const mainKpi = document.getElementById('kpiWeightedECL');
+
+  function updateSim() {
+    const wB = parseInt(rBase.value);
+    const wU = parseInt(rUp.value);
+    const wD = parseInt(rDown.value);
+
+    vBase.innerText = wB; vUp.innerText = wU; vDown.innerText = wD;
+
+    const totalW = wB + wU + wD;
+    
+    if (totalW !== 100) {
+      warning.style.display = 'block';
+      warning.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> Total Weight: <strong class="${totalW > 100 ? 'text-danger' : 'text-warning'}">${totalW}%</strong> (Must be 100%)`;
+      resDisplay.style.opacity = "0.5";
+    } else {
+      warning.style.display = 'none';
+      resDisplay.style.opacity = "1";
+    }
+
+    // Weighted Calculation
+    const newECL = (eclBase * (wB/100)) + (eclUp * (wU/100)) + (eclDown * (wD/100));
+    
+    resDisplay.innerText = Math.round(newECL).toLocaleString();
+    
+    // Impact Calculation
+    const diff = newECL - currentWeighted;
+    const diffPerc = ((diff / currentWeighted) * 100).toFixed(2);
+    const diffMillions = (Math.abs(diff) / 1000000).toFixed(1) + "M";
+    
+    if (Math.abs(diff) < 1000) {
+        diffDisplay.innerHTML = `<span class="badge bg-secondary bg-opacity-25 text-light border border-secondary">No Change</span>`;
+    } else if(diff > 0) {
+        diffDisplay.innerHTML = `<span class="badge bg-danger bg-opacity-25 text-danger border border-danger animate-pulse"><i class="bi bi-graph-up-arrow"></i> +${diffMillions} (${diffPerc}%) Impact</span>`;
+    } else {
+        diffDisplay.innerHTML = `<span class="badge bg-success bg-opacity-25 text-success border border-success"><i class="bi bi-graph-down-arrow"></i> -${diffMillions} (${diffPerc}%) Release</span>`;
+    }
+
+    if(totalW === 100) {
+        mainKpi.innerText = Math.round(newECL).toLocaleString();
+        mainKpi.style.color = diff > 0 ? "#ef4444" : "#ffffff"; 
+    }
+  }
+
+  function resetSim() {
+    rBase.value = 40; rUp.value = 30; rDown.value = 30;
+    updateSim();
+    mainKpi.style.color = "#ffffff";
+  }
+
+  [rBase, rUp, rDown].forEach(el => el.addEventListener('input', updateSim));
+
+  // --- 3. DYNAMIC TABLE LOGIC ---
+  const config = {
+    3: { title: "Critical Attention Required", subtitle: "Top 10 Stage 3 (NPA) accounts", colorClass: "text-danger", icon: "bi-lightning-charge-fill", badgeClass: "bg-danger text-danger border-danger", barColor: "bg-danger" },
+    2: { title: "Watch List (SICR)", subtitle: "Top 10 Stage 2 accounts", colorClass: "text-warning", icon: "bi-exclamation-triangle-fill", badgeClass: "bg-warning text-warning border-warning", barColor: "bg-warning" },
+    1: { title: "Stable Portfolio", subtitle: "Top 10 Stage 1 accounts", colorClass: "text-success", icon: "bi-shield-check-fill", badgeClass: "bg-success text-success border-success", barColor: "bg-success" }
+  };
+
+  function renderTable(stageId) {
+    const tbody = document.getElementById('riskTableBody');
+    const titleEl = document.getElementById('tableTitle');
+    const subEl = document.getElementById('tableSubtitle');
+    const cfg = config[stageId];
+    const data = rawData[stageId];
+
+    titleEl.className = `fw-bold mb-0 ${cfg.colorClass}`;
+    titleEl.innerHTML = `<i class="bi ${cfg.icon} me-2"></i>${cfg.title}`;
+    subEl.textContent = cfg.subtitle;
+    tbody.innerHTML = '';
+
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No accounts found in this stage.</td></tr>';
+      return;
+    }
+
+    data.forEach(row => {
+      const pdPerc = (row.PRED_PD * 100).toFixed(2);
+      const ead = row.EAD ? Math.round(row.EAD).toLocaleString() : '0';
+      const eclStr = Math.round(row.ECL_12m || row.ECL || 0).toLocaleString();
+      const custId = row[idColName];
+      const segment = row.SEGMENT || 'N/A';
+      const stageName = row.Stage || `Stage ${stageId}`;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="ps-4 fw-bold text-dark font-monospace">${custId}</td>
+        <td class="text-muted">${segment}</td>
+        <td><span class="badge ${cfg.badgeClass} bg-opacity-10 border-opacity-25 px-2 py-1 rounded-pill">${stageName}</span></td>
+        <td style="min-width: 180px;">
+          <div class="d-flex align-items-center">
+            <span class="fw-bold text-dark me-2" style="width: 50px;">${pdPerc}%</span>
+            <div class="risk-meter-bg" style="width: 80px; height: 6px; background: #f1f5f9; border-radius: 10px;">
+              <div class="risk-meter-fill ${cfg.barColor}" style="width: ${pdPerc}%; height: 100%; border-radius: 10px;"></div>
+            </div>
+          </div>
+        </td>
+        <td class="font-monospace text-muted">${ead}</td>
+        <td class="fw-bold text-dark font-monospace">${eclStr}</td>
+        <td><a href="/customer?id=${custId}" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Analyze</a></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  const selector = document.getElementById('stageSelector');
+  if (selector) {
+    selector.addEventListener('change', (e) => renderTable(e.target.value));
+    renderTable("3"); // Initial Load
+  }
+  
+  // Init Sim
+  updateSim();
+
+  // --- 4. CHARTS ---
+  Chart.defaults.font.family = "'Segoe UI', system-ui";
+  Chart.defaults.color = "#64748b";
+  const commonOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+  
+  new Chart(document.getElementById('pdChart'), { type: 'bar', data: { labels: {{ summary.pd_hist.labels | tojson }}, datasets: [{ data: {{ summary.pd_hist.data | tojson }}, backgroundColor: "#3b82f6" }] }, options: commonOpts });
+  new Chart(document.getElementById('stageChart'), { type: 'bar', data: { labels: {{ summary.ecl_by_stage.labels | tojson }}, datasets: [{ data: {{ summary.ecl_by_stage.data | tojson }}, backgroundColor: "#6366f1" }] }, options: commonOpts });
+  new Chart(document.getElementById('mixChart'), { type: 'doughnut', data: { labels: {{ summary.stage_mix.labels | tojson }}, datasets: [{ data: {{ summary.stage_mix.data | tojson }}, backgroundColor: ["#22c55e", "#f59e0b", "#ef4444"] }] }, options: { ...commonOpts, cutout: '70%' } });
+  new Chart(document.getElementById('segChart'), { type: 'bar', indexAxis: 'y', data: { labels: {{ summary.ecl_by_segment.labels | tojson }}, datasets: [{ data: {{ summary.ecl_by_segment.data | tojson }}, backgroundColor: "#0ea5e9" }] }, options: commonOpts });
+
+  // Tooltips Init
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) { return new bootstrap.Tooltip(tooltipTriggerEl) })
+
+  // PDF Generation Function
+  function generatePDF() {
+    const element = document.getElementById('report-content');
+    const opt = {
+      margin: [0.3, 0.3, 0.3, 0.3], // Reduced margins
+      filename: 'risk-report.pdf',
+      image: { type: 'jpeg', quality: 1.0 }, // Max quality
+      html2canvas: { scale: 3, useCORS: true }, // Higher scale for clarity
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save();
+  }
+</script>
+{% endblock %}

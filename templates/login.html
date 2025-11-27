@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="margin-top: 8vh;">
+  <div class="col-md-5 col-lg-4">
+    <div class="card shadow border-0 animate-fade-up">
+      <div class="card-body p-5">
+        <div class="text-center mb-4">
+          <div class="mb-3 text-primary"><i class="bi bi-shield-lock-fill fs-1"></i></div>
+          <h3 class="fw-bold">Welcome Back</h3>
+          <p class="text-muted small">Please login to access the dashboard</p>
+        </div>
+
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-uppercase text-muted">Username</label>
+            <input type="text" name="username" class="form-control" placeholder="Enter your username" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-uppercase text-muted">Password</label>
+            <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+          </div>
+          
+          <div class="mb-4 form-check">
+            <input type="checkbox" class="form-check-input" id="remember" name="remember">
+            <label class="form-check-label small text-muted" for="remember">Keep me logged in</label>
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary py-2 fw-bold">Login</button>
+          </div>
+        </form>
+
+        <div class="text-center mt-4">
+          <p class="small text-muted mb-0">
+            New Risk Manager? 
+            <a href="{{ url_for('signup') }}" class="text-primary text-decoration-none fw-bold">Create Account</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
