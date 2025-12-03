@@ -38,9 +38,9 @@ login_manager = LoginManager()
 login_manager.login_view = 'login'
 login_manager.init_app(app)
 
-@app.before_first_request
-def create_tables():
+with app.app_context():
     db.create_all()
+
 
 # -------------------------------------------------
 #  2. AI & ML SETUP (Future-Proof)
