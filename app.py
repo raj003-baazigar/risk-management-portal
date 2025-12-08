@@ -28,18 +28,24 @@ app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 application = app  # For some deployment platforms
 app.secret_key = "change_this_to_a_secure_random_key"
 
-# Database
-DB_NAME = "users.db"
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(BASE_DIR, DB_NAME)}'
+# Database - Use environment variable for production
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    # Render provides PostgreSQL, not SQLite
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+else:
+    # Local development uses SQLite
+    DB_NAME = "users.db"
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(BASE_DIR, DB_NAME)}'
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db = SQLAlchemy(app)
-login_manager = LoginManager()
-login_manager.login_view = 'login'
-login_manager.init_app(app)
 
-with app.app_context():
-    db.create_all()
+### **2. Add psycopg2 to requirements.txt**
+
+
 
 
 # -------------------------------------------------
